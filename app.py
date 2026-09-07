@@ -231,9 +231,9 @@ def load_market_history(asof_iso, min_days=60):
     # If the same ISIN traded on both exchanges, prefer NSE. BSE-only stocks remain.
     all_rows["priority"] = np.where(all_rows.exchange.eq("NSE"), 0, 1)
     all_rows["dedupe"] = np.where(
-        all_rows.isin.ne(""),
-        all_rows.isin,
-        all_rows.exchange + ":" + all_rows.symbol,
+        all_rows["isin"].ne(""),
+        all_rows["isin"],
+        all_rows["exchange"] + ":" + all_rows["symbol"],
     )
     all_rows = all_rows.sort_values(["date", "dedupe", "priority"]).drop_duplicates(["date", "dedupe"], keep="first")
     return all_rows, failures
