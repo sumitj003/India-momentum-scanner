@@ -267,8 +267,10 @@ if run:
         except Exception as e:
             st.warning(f"Nifty 500 benchmark unavailable: {e}")
 
-    # Fast pre-filter using current quote: price >= ₹50 and latest traded value >= ₹10 Cr.
-    # This avoids thousands of historical calls for obvious rejects.
+    # Fast pre-filter using current quote for price only.
+    # IMPORTANT: latest traded value is evaluated from the selected closing-date
+    # historical candle below, not from today's live session. This keeps a
+    # Monday-morning scan based on Friday's latest completed market session.
     eq["quote_key"] = eq.exchange.astype(str) + ":" + eq.tradingsymbol.astype(str)
     keys = eq.quote_key.tolist()
     quotes = {}
@@ -288,15 +290,13 @@ if run:
         q = quotes.get(r.quote_key, {})
         try:
             price = float(q.get("last_price", 0))
-            volume = float(q.get("volume", 0))
-            latest_tv = price * volume / 1e7
         except Exception:
             continue
-        if price < 50 or latest_tv < 10:
+        if price < 50:
             continue
         candidates.append(r)
 
-    st.info(f"Universe: {len(eq):,} listed equities → {len(candidates):,} passed the quick price/liquidity check.")
+    st.info(f"Universe: {len(eq):,} listed equities → {len(candidates):,} passed the quick price check.")
 
     rows = []
     progress = st.progress(0)
@@ -333,7 +333,10 @@ if run:
                 continue
             if not (1 <= atr <= 6):
                 continue
+            latest_tv = float(x.traded_value_cr)
             if avg20 < 10:
+                continue
+            if latest_tv < 10:
                 continue
 
             rs = max(ret30 - bench_ret30, ret50 - bench_ret50)
@@ -349,7 +352,7 @@ if run:
                 "RS %": rs,
                 "ATR %": atr,
                 "Avg20 ₹Cr": avg20,
-                "Latest ₹Cr": float(x.traded_value_cr),
+                "Latest ₹Cr": latest_tv,
                 "sma20": sma20,
                 "sma50": sma50,
                 "sma50_5d": sma50_5d,
