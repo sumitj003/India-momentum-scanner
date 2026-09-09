@@ -677,7 +677,12 @@ with tab1:
                 selected, sector_proxy = apply_sector_cap(candidates.head(max(MAX_STOCKS, 12)), MAX_SECTOR, use_current_proxy=True)
                 selected.insert(0, "Rank", range(1, len(selected) + 1))
                 selected["Allocation %"] = round(100 / len(selected), 1)
-                st.session_state.monthly_selected_for_risk = selected[["Stock", "dedupe", "Price"]].to_dict("records")
+                # `dedupe` is the DataFrame index at this stage (not a column).
+                # Store it explicitly so the daily risk monitor can map each holding
+                # back to its historical price series.
+                risk_selection = selected[["Stock", "Price"]].copy()
+                risk_selection.insert(1, "dedupe", risk_selection.index.astype(str))
+                st.session_state.monthly_selected_for_risk = risk_selection.reset_index(drop=True).to_dict("records")
                 st.success(f"FINAL SELECTION: {len(selected)} stocks")
                 st.dataframe(
                     selected[["Rank", "Stock", "Exchange", "Sector", "Price", "30D %", "50D %", "63D %", "RS63 %", "RS Percentile", "ATR %", "Avg20 ₹Cr", "Score", "Allocation %"]].round(2),
